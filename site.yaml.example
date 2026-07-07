@@ -1,17 +1,17 @@
 # ==============================================================================
 # 🖥️  SITE CONFIG (machine layer)  —  copy to  ~/.binderforge/site.yaml
 # ==============================================================================
-# Set ONCE per machine. Holds everything install-specific: the conda source, the
-# per-tool conda env names, and paths to installed tools / model weights / DBs.
-# A run's config.yaml stays portable and carries NONE of this.
+# Set ONCE per machine: conda source, per-tool conda env names, and paths to installed
+# tools / model weights / DBs. A run's config.yaml stays portable and carries NONE of this.
 #
-# Resolution order (first that exists wins):
-#   1. $BINDERFORGE_SITE          2. <tool root>/site.yaml          3. ~/.binderforge/site.yaml
+# MOSTLY OPTIONAL: everything below has a built-in default — env names are the recipe
+# names, and paths default under ~/.binderforge/{tools,models}/. So you only need the keys
+# whose install lives ELSEWHERE. `binderforge setup` writes a starter copy for you; delete
+# any line you don't need to override. Keep only the keys for the generator/predictor you use.
 #
-# Only the keys for the generator/predictor you actually use are required —
-# run `python Run_Pipeline.py doctor` from a config folder to see what's missing.
-# You can auto-seed this file from an existing filled config.yaml:
-#   python Run_Pipeline.py init-site
+# Resolution order for the FILE: $BINDERFORGE_SITE → <tool root>/site.yaml → ~/.binderforge/site.yaml
+# Value precedence: built-in defaults < site.yaml < a run's config.yaml.
+# `binderforge doctor` (from a config folder) shows what's still missing.
 # ==============================================================================
 
 # conda.sh to source before `conda activate`. "auto" = derive from $CONDA_EXE.

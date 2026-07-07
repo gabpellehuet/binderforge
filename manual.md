@@ -27,36 +27,27 @@ orchestrator runs the matching scripts automatically.
 
 ```bash
 git clone <repo> && cd BinderForge
-pip install -e .                     # installs the `binderforge` command (orchestrator only)
-binderforge setup-envs              # dry-run plan of the conda envs; add --create to build them
-#   then per-env pip/git/license follow-ups — see envs/README.md
+pip install -e .              # installs the `binderforge` command (orchestrator only)
+binderforge setup --create    # creates the conda envs + writes a starter site.yaml
 ```
+(If you skip `pip install -e .`, replace `binderforge` with `python /path/to/Run_Pipeline.py`.)
 
-Machine-specific setup lives in **`site.yaml`** (set once per install), NOT in a run's
-`config.yaml`. It holds the conda source, conda env names, and paths to tools / model
-weights / databases.
+`setup` can't do three things for you — all documented in [`envs/README.md`](envs/README.md):
+1. **Per-env follow-ups**: install torch matching your CUDA, `git clone` RFdiffusion +
+   ProteinMPNN, accept the PyRosetta license.
+2. **Download the gated weights / DBs** you'll use (AF3, RFdiffusion checkpoint, AF2 params,
+   MSA DB) — licensed/large, so you fetch them.
+3. **Point `site.yaml` at them** — but paths default under `~/.binderforge/{tools,models}/`
+   and env names default to the recipe names, so `site.yaml` is **mostly optional**: you edit
+   only the entries whose install lives elsewhere. `init-site` can also seed it from a filled
+   config. Value precedence: built-in defaults < `site.yaml` < a run's `config.yaml`.
 
-```bash
-cp site.yaml.example ~/.binderforge/site.yaml   # then edit the paths
-# or, to seed it from an already-filled config.yaml:
-binderforge init-site
-```
+**Target inputs**: a target PDB and its MSA (`.a3m`, auto-made in step 0 if absent).
 
-(If you didn't `pip install -e .`, replace `binderforge` with `python /path/to/Run_Pipeline.py`.)
-
-Resolution order: `$BINDERFORGE_SITE` → `<tool root>/site.yaml` → `~/.binderforge/site.yaml`.
-A run's `config.yaml` may still override any machine key by setting it explicitly.
-
-- **Conda environments** (names in `site.yaml` `envs:`): `rf3`, `mlfold`, `boltz`,
-  `pyrosetta`, `base`, `msa_tools`.
-- **Tools / models / DBs** (`site.yaml` `tools:` / `checkpoints:` / step blocks):
-  ProteinMPNN script, RFdiffusion checkpoint, and the generator/predictor you chose.
-- **Target inputs**: a target PDB and its MSA (`.a3m`).
-
-Check everything is in place for the steps you enabled:
+Then verify what the steps you enabled actually need:
 ```bash
 cd <Project>/<NN-Label>
-python /path/to/Run_Pipeline.py doctor
+binderforge doctor            # ✅/❌ per env, tool, and model path — with the site.yaml key to fix each
 ```
 
 ### Generate the target MSA (once, before running)

@@ -41,6 +41,39 @@ SITE_KEYS = (
 
 _LEGACY_CONDA_SOURCE = "/usr/local/miniforge3/etc/profile.d/conda.sh"
 
+# Default install home. If you install the clonable tools + downloaded weights under
+# here (tools/ and models/), site.yaml can be nearly empty — these paths are derived.
+BF_HOME = os.path.expanduser(os.environ.get('BINDERFORGE_HOME', '~/.binderforge'))
+
+
+def default_machine():
+    """The machine layer's built-in defaults: conda source 'auto', the recipe env
+    names, and tool/model paths under BF_HOME. site.yaml (and per-run config) override
+    any of these, so users only set what differs from this convention."""
+    tools = os.path.join(BF_HOME, 'tools')
+    models = os.path.join(BF_HOME, 'models')
+    return {
+        'conda_source': 'auto',
+        'envs': {'rfd': 'rf3', 'mpnn': 'mlfold', 'boltz': 'boltz',
+                 'score': 'pyrosetta', 'dash': 'base', 'msa': 'msa_tools'},
+        'tools': {
+            'mpnn_script': os.path.join(tools, 'ProteinMPNN', 'protein_mpnn_run.py'),
+            'af_input_dir': '/data/af_input',
+        },
+        'checkpoints': {'rfd': os.path.join(models, 'rfd3.ckpt')},
+        'step1_complexa': {
+            'complexa_dir': os.path.join(tools, 'Proteina-Complexa'),
+            'docker_image': 'proteina-complexa',
+            'af2_params_dir': os.path.join(models, 'AF2', 'params'),
+        },
+        'step3_alphafast': {
+            'alphafast_dir': os.path.join(tools, 'AlphaFast'),
+            'db_dir': os.path.join(models, 'AF3_db'),
+            'weights_dir': os.path.join(models, 'AF3'),
+            'docker_image': 'romerolabduke/alphafast:latest',
+        },
+    }
+
 
 # ── Locate & load ─────────────────────────────────────────────────────────────
 def find_site_path(tool_root):
@@ -75,8 +108,9 @@ def _deep_merge(base, override):
 
 
 def merge_site(cfg, site):
-    """Deep-merge site into cfg with cfg winning (site only fills what's absent)."""
-    return _deep_merge(site or {}, cfg or {})
+    """Layer machine settings under the run config: defaults < site.yaml < config.
+    So per-run config wins, then site.yaml, then the BF_HOME conventions."""
+    return _deep_merge(_deep_merge(default_machine(), site or {}), cfg or {})
 
 
 # ── Conda source ──────────────────────────────────────────────────────────────
@@ -161,6 +195,34 @@ def setup_envs(tool_root, create=False):
         print("\n   (dry run — re-run with `setup-envs --create` to create the missing envs)")
     print("\n📄 Post-create pip/git/license steps per env: see envs/README.md")
     print("   Then set paths in site.yaml and run: doctor")
+    return ok
+
+
+def write_default_site(dest=None):
+    """Write a starter site.yaml (the BF_HOME default layout) if none exists yet.
+    Returns (path, created_bool)."""
+    dest = dest or os.path.join(BF_HOME, 'site.yaml')
+    if os.path.exists(dest):
+        return dest, False
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if yaml is not None:
+        with open(dest, 'w') as f:
+            f.write("# BinderForge site config — paths default under ~/.binderforge/{tools,models}/.\n"
+                    "# Edit only the lines whose install lives elsewhere; delete the rest.\n")
+            yaml.safe_dump(default_machine(), f, sort_keys=False)
+    return dest, True
+
+
+def setup(tool_root, create=False):
+    """One-shot guided setup: conda envs + a starter site.yaml, then point at doctor."""
+    print("🔨 BinderForge setup\n")
+    ok = setup_envs(tool_root, create=create)
+    dest, made = write_default_site()
+    print(f"\n🗂️  site.yaml: {'wrote ' + dest if made else 'already exists at ' + dest}")
+    print(f"   Paths default under {BF_HOME}/tools and {BF_HOME}/models — install tools/weights")
+    print(f"   there to skip editing paths, or edit {os.path.basename(dest)} for installs elsewhere.")
+    print("\n➡️  Next: download the gated weights/DBs, then run `doctor` from a config folder\n"
+          "    (it lists exactly what's still missing for your chosen generator/predictor).")
     return ok
 
 

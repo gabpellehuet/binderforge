@@ -6,8 +6,7 @@ This folder is a ready-to-copy scaffold for one **target**. To start a real run:
    becomes `binder_name`, the prefix of every `binder_id`).
 2. **Replace `target.pdb`** with your real target structure. (`target_msa.a3m` is
    created automatically in step 0 if it isn't already here.)
-3. **Edit `00-Label/config.yaml`** — set every `# TODO` field (design knobs and, for
-   now, the machine paths). Rename `00-Label` if you like; keep the `NN-` prefix
+3. **Edit `00-Label/config.yaml`** — set every `# TODO` field (design knobs). Rename `00-Label` if you like; keep the `NN-` prefix
    (`NN` = `config_id`, auto-added on first run if missing). Add more `NN-Label/`
    config folders to run different settings against the same target.
 4. **Run** from inside the config folder:

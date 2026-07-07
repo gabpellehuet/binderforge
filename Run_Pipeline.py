@@ -187,17 +187,19 @@ def check_inputs(cfg, config_yaml):
 def main():
     parser = argparse.ArgumentParser(description="🧬 Protein Design Pipeline Orchestrator")
     parser.add_argument('step', choices=['0', '1', '2', '3', '4', '5', 'all',
-                                         'doctor', 'init-site', 'setup-envs'],
+                                         'doctor', 'init-site', 'setup-envs', 'setup'],
                         help="0=MSA, 1=Backbone, 2=MPNN, 3=Prediction, 4=Score, 5=Dash, all; "
-                             "doctor=check machine prerequisites; init-site=seed site.yaml from this "
-                             "config; setup-envs=create conda envs from envs/*.yml")
+                             "setup=guided one-shot (envs + starter site.yaml); setup-envs=create "
+                             "conda envs; doctor=check prerequisites; init-site=seed site.yaml from config")
     parser.add_argument('--config', default=None,
                         help="Explicit config path (default: ./config.yaml in the config folder you cd'd into)")
     parser.add_argument('--create', action='store_true',
-                        help="With setup-envs: actually create the missing envs (default: dry-run plan)")
+                        help="With setup / setup-envs: actually create the missing envs (default: dry-run plan)")
     args = parser.parse_args()
 
-    # setup-envs is machine setup — no config folder needed; handle before locating one.
+    # Machine-setup actions — no config folder needed; handle before locating one.
+    if args.step == 'setup':
+        sys.exit(0 if sitecfg.setup(TOOL_ROOT, create=args.create) else 1)
     if args.step == 'setup-envs':
         sys.exit(0 if sitecfg.setup_envs(TOOL_ROOT, create=args.create) else 1)
 

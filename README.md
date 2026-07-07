@@ -15,17 +15,22 @@ B = target**.
 
 ```bash
 git clone <repo> && cd BinderForge
-pip install -e .                     # installs the `binderforge` command (orchestrator only)
-
-binderforge setup-envs --create     # build the conda envs from envs/*.yml
-#   then do the per-env pip / git / license follow-ups documented in envs/README.md
-#   and download the model weights / databases for the path you'll use
-
-cp site.yaml.example ~/.binderforge/site.yaml   # then edit every path + env name
+pip install -e .              # installs the `binderforge` command (orchestrator only)
+binderforge setup --create    # creates the conda envs + writes a starter site.yaml
 ```
 
-`site.yaml` holds all machine-specific settings (conda source, env names, tool/model/DB
-paths) — set once per machine. A run's `config.yaml` stays portable.
+`setup` gets you most of the way. Three things it can't do for you:
+1. **torch** matching your CUDA, and `git clone` RFdiffusion + ProteinMPNN, and the PyRosetta
+   license — the per-env follow-ups in [`envs/README.md`](envs/README.md).
+2. **Download the gated model weights / DBs** (AF3, RFdiffusion, AF2 params, MSA DB) for the
+   path you'll use — these are licensed/large, so no tool can fetch them for you.
+3. Point `site.yaml` at them — **but** if you install tools/weights under the default layout
+   `~/.binderforge/{tools,models}/`, the paths are already filled in; you only edit the ones
+   that live elsewhere. `binderforge doctor` (run from a config folder) lists exactly what's
+   still missing for your chosen generator + predictor.
+
+Machine settings live in `site.yaml` (conda source, env names, tool/model paths); a run's
+`config.yaml` stays portable and carries none of it.
 
 ## Run
 
