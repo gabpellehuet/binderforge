@@ -10,9 +10,9 @@
    source, and provides the `doctor` preflight.
 
    site.yaml resolution order (first that exists wins):
-     1. $BINDERDESIGN_SITE
+     1. $BINDERFORGE_SITE
      2. <tool root>/site.yaml
-     3. ~/.binderdesign/site.yaml
+     3. ~/.binderforge/site.yaml
 
    MERGE RULE: site fills machine keys; the per-run config WINS on any conflict,
    so existing run folders that still carry machine paths inline keep working.
@@ -45,9 +45,9 @@ _LEGACY_CONDA_SOURCE = "/usr/local/miniforge3/etc/profile.d/conda.sh"
 # ── Locate & load ─────────────────────────────────────────────────────────────
 def find_site_path(tool_root):
     """Return the first existing site.yaml path (env → tool root → home), or None."""
-    for cand in (os.environ.get('BINDERDESIGN_SITE'),
+    for cand in (os.environ.get('BINDERFORGE_SITE'),
                  os.path.join(tool_root, 'site.yaml'),
-                 os.path.expanduser('~/.binderdesign/site.yaml')):
+                 os.path.expanduser('~/.binderforge/site.yaml')):
         if cand and os.path.exists(cand):
             return cand
     return None
@@ -82,7 +82,7 @@ def merge_site(cfg, site):
 # ── Conda source ──────────────────────────────────────────────────────────────
 def resolve_conda_source(site):
     """Resolve the conda.sh to source: explicit site/env value, else auto-detect."""
-    val = os.environ.get('BINDERDESIGN_CONDA_SOURCE') or (site or {}).get('conda_source')
+    val = os.environ.get('BINDERFORGE_CONDA_SOURCE') or (site or {}).get('conda_source')
     if val and val != 'auto':
         return os.path.expanduser(val)
     exe = os.environ.get('CONDA_EXE')             # …/bin/conda → …/etc/profile.d/conda.sh
@@ -252,7 +252,7 @@ def doctor(cfg, tool_root):
 def print_doctor(cfg, tool_root):
     ok, rows = doctor(cfg, tool_root)
     icon = {'OK': '✅', 'MISS': '❌', 'WARN': '⚠️ '}
-    print("🩺 binderdesign doctor — checking enabled steps\n")
+    print("🩺 binderforge doctor — checking enabled steps\n")
     for status, label, detail, key in rows:
         tail = f"   → set `{key}` in site.yaml" if status == 'MISS' and key else ''
         print(f"   {icon[status]} {label:<24} {detail}{tail}")

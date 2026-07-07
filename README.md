@@ -1,4 +1,4 @@
-# ProteinBinderDesign
+# BinderForge
 
 Given a target protein, design candidate **binders** and rank them — a 5-step pipeline
 orchestrated by one command:
@@ -14,14 +14,14 @@ B = target**.
 ## Install
 
 ```bash
-git clone <repo> && cd ProteinBinderDesign
-pip install -e .                     # installs the `binderdesign` command (orchestrator only)
+git clone <repo> && cd BinderForge
+pip install -e .                     # installs the `binderforge` command (orchestrator only)
 
-binderdesign setup-envs --create     # build the conda envs from envs/*.yml
+binderforge setup-envs --create     # build the conda envs from envs/*.yml
 #   then do the per-env pip / git / license follow-ups documented in envs/README.md
 #   and download the model weights / databases for the path you'll use
 
-cp site.yaml.example ~/.binderdesign/site.yaml   # then edit every path + env name
+cp site.yaml.example ~/.binderforge/site.yaml   # then edit every path + env name
 ```
 
 `site.yaml` holds all machine-specific settings (conda source, env names, tool/model/DB
@@ -34,8 +34,8 @@ cp -r ProjectName MyTarget           # the template scaffold
 # replace MyTarget/target.pdb with your target; edit the `# TODO`s in MyTarget/00-Label/config.yaml
 
 cd MyTarget/00-Label
-binderdesign doctor                  # check envs / tools / model paths for this config
-binderdesign all                     # run steps 0→5  (or one step: binderdesign 4)
+binderforge doctor                  # check envs / tools / model paths for this config
+binderforge all                     # run steps 0→5  (or one step: binderforge 4)
 ```
 
 Results land in `MyTarget/00-Label/outputs/` (ranked Excel, HTML dashboard, PyMOL sessions,
@@ -50,4 +50,4 @@ scoring cutoffs, troubleshooting) and [`envs/README.md`](envs/README.md) for per
 
 GPU(s) + conda; the external tools you enable (RFdiffusion3, ProteinMPNN, Boltz/AlphaFast,
 PyRosetta, colabfold/mmseqs). Model weights (AF3, RFdiffusion, PyRosetta license, MSA DBs)
-are downloaded separately — `binderdesign doctor` tells you what's missing.
+are downloaded separately — `binderforge doctor` tells you what's missing.

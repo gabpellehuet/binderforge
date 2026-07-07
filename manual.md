@@ -26,9 +26,9 @@ orchestrator runs the matching scripts automatically.
 ## 2. Install & prerequisites
 
 ```bash
-git clone <repo> && cd ProteinBinderDesign
-pip install -e .                     # installs the `binderdesign` command (orchestrator only)
-binderdesign setup-envs              # dry-run plan of the conda envs; add --create to build them
+git clone <repo> && cd BinderForge
+pip install -e .                     # installs the `binderforge` command (orchestrator only)
+binderforge setup-envs              # dry-run plan of the conda envs; add --create to build them
 #   then per-env pip/git/license follow-ups — see envs/README.md
 ```
 
@@ -37,14 +37,14 @@ Machine-specific setup lives in **`site.yaml`** (set once per install), NOT in a
 weights / databases.
 
 ```bash
-cp site.yaml.example ~/.binderdesign/site.yaml   # then edit the paths
+cp site.yaml.example ~/.binderforge/site.yaml   # then edit the paths
 # or, to seed it from an already-filled config.yaml:
-binderdesign init-site
+binderforge init-site
 ```
 
-(If you didn't `pip install -e .`, replace `binderdesign` with `python /path/to/Run_Pipeline.py`.)
+(If you didn't `pip install -e .`, replace `binderforge` with `python /path/to/Run_Pipeline.py`.)
 
-Resolution order: `$BINDERDESIGN_SITE` → `<tool root>/site.yaml` → `~/.binderdesign/site.yaml`.
+Resolution order: `$BINDERFORGE_SITE` → `<tool root>/site.yaml` → `~/.binderforge/site.yaml`.
 A run's `config.yaml` may still override any machine key by setting it explicitly.
 
 - **Conda environments** (names in `site.yaml` `envs:`): `rf3`, `mlfold`, `boltz`,

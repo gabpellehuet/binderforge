@@ -1,12 +1,12 @@
 # ==============================================================================
-# 🖥️  SITE CONFIG (machine layer)  —  copy to  ~/.binderdesign/site.yaml
+# 🖥️  SITE CONFIG (machine layer)  —  copy to  ~/.binderforge/site.yaml
 # ==============================================================================
 # Set ONCE per machine. Holds everything install-specific: the conda source, the
 # per-tool conda env names, and paths to installed tools / model weights / DBs.
 # A run's config.yaml stays portable and carries NONE of this.
 #
 # Resolution order (first that exists wins):
-#   1. $BINDERDESIGN_SITE          2. <tool root>/site.yaml          3. ~/.binderdesign/site.yaml
+#   1. $BINDERFORGE_SITE          2. <tool root>/site.yaml          3. ~/.binderforge/site.yaml
 #
 # Only the keys for the generator/predictor you actually use are required —
 # run `python Run_Pipeline.py doctor` from a config folder to see what's missing.

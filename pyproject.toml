@@ -7,7 +7,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "proteinbinderdesign"
+name = "binderforge"
 version = "0.4.0"
 description = "Convention-based orchestrator for target→binder design (backbone → MPNN → prediction → scoring → dashboard)."
 readme = "manual.md"
@@ -15,8 +15,8 @@ requires-python = ">=3.9"
 dependencies = ["pyyaml>=5"]
 
 [project.scripts]
-# After `pip install -e .`:  binderdesign doctor | setup-envs | all | 0..5
-binderdesign = "Run_Pipeline:main"
+# After `pip install -e .`:  binderforge doctor | setup-envs | all | 0..5
+binderforge = "Run_Pipeline:main"
 
 [tool.setuptools]
 py-modules = ["Run_Pipeline"]

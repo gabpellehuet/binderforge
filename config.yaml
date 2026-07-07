@@ -118,7 +118,7 @@ cutoffs:
 # Machine-specific settings — conda source, conda env names, tool/model/DB paths,
 # and gpu_devices — live in site.yaml, NOT here, so this config stays portable.
 # Set them once per machine:
-#   cp site.yaml.example ~/.binderdesign/site.yaml      # then edit paths
+#   cp site.yaml.example ~/.binderforge/site.yaml      # then edit paths
 #   (or:  python /path/to/Run_Pipeline.py init-site  from a filled config folder)
 # Verify with:  python /path/to/Run_Pipeline.py doctor
 # A run may still override any machine key by setting it here explicitly.

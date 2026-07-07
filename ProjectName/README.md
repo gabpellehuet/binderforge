@@ -13,7 +13,7 @@ This folder is a ready-to-copy scaffold for one **target**. To start a real run:
 4. **Run** from inside the config folder:
    ```bash
    cd PIV3/00-Label
-   python /path/to/ProteinBinderDesign/Run_Pipeline.py all   # or a step: 0..5
+   python /path/to/BinderForge/Run_Pipeline.py all   # or a step: 0..5
    ```
 
 Layout:

@@ -227,7 +227,7 @@ def main():
         user_cfg = yaml.safe_load(f) or {}
 
     if args.step == 'init-site':
-        dest = os.environ.get('BINDERDESIGN_SITE') or os.path.expanduser('~/.binderdesign/site.yaml')
+        dest = os.environ.get('BINDERFORGE_SITE') or os.path.expanduser('~/.binderforge/site.yaml')
         if os.path.exists(dest):
             print(f"⚠️  {dest} already exists — not overwriting. Edit it directly or remove it first.")
             sys.exit(1)
