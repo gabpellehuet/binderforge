@@ -1,49 +1,16 @@
 """
 ==============================================================================
-   🧬 STEP 02: ProteinMPNN & BOLTZ PREP
+   STEP 2: ProteinMPNN — sequence design + prediction-input prep
 ==============================================================================
+   Designs sequences for the Step-1 backbones with ProteinMPNN (binder = chain A
+   redesigned, target = chain B fixed), keeps the best sequence per design, and
+   writes the per-design YAML that Step 3 (Boltz/AlphaFast) consumes.
 
-   DESCRIPTION:
-   ---------------------------------------------------------------------------
-   This script designs amino acid sequences for the backbone structures generated
-   in Step 02 (RFdiffusion). It then prepares the input YAML files required for
-   structure prediction with Boltz (Step 04).
+   In : backbones  <01_BackboneGeneration>/gpu{N}/*.pdb
+   Out: <02_ProteinMPNN>/gpu{N}/seqs/*.fa  and  yaml/*_seq_*.yaml
 
-   KEY FUNCTIONS:
-   1. SEQUENCE DESIGN: Runs ProteinMPNN on the Binder (Chain A) while keeping
-      the Target (Chain B) sequence fixed.
-   2. SELECTION: Extracts the single best sequence (lowest score) for each design.
-   3. BOLTZ PREP: Generates a .yaml file for each design that combines:
-      - The new Binder sequence.
-      - The fixed Target sequence.
-      - The path to the pre-computed Target MSA (crucial for Boltz accuracy).
-
-   INPUTS:
-   - RFdiffusion PDBs from: outputs/02_RFdiffusion/gpu{0,1}
-   - Target Chain B PDB (for sequence extraction).
-   - Target Chain B MSA (.a3m file).
-
-   OUTPUTS:
-   - FASTA files: outputs/03_ProteinMPNN/gpu{0,1}/seqs/
-   - YAML files:  outputs/03_ProteinMPNN/gpu{0,1}/yaml/  <-- Inputs for Boltz
-
-   USAGE:
-   ---------------------------------------------------------------------------
-   Managed by Orchestrator:
-       python 01_Run_Pipeline.py 3
-
-   Standalone (requires 'mlfold' env):
-       python scripts/03_ProteinMPNN.py
-
-Written by Naïs Sermet, jean-Marie Bourhis, and gemini (because we are both in python,'tanches' (a kind of fish in french))
-==============================================================================
-"""
-"""
-==============================================================================
-   UPDATES:
-   - Batch mode
-   - Added real-time progress monitoring in the main thread.
-   - Counts .fa files to track MPNN generation status.
+   Run via the orchestrator (`Run_Pipeline.py 2`); standalone needs the `mlfold` env.
+   Authors: Naïs Sermet, Jean-Marie Bourhis.
 ==============================================================================
 """
 

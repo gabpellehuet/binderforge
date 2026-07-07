@@ -36,7 +36,7 @@
       - charged_res:        Count of charged residues.
       - sequence:           Amino acid sequence of the Binder (Chain A).
 
-Written by Naïs Sermet, Jean-Marie Bourhis, and Gemini.
+Written by Naïs Sermet, Jean-Marie Bourhis, Gabriel Pellé-Huet, Claude and Gemini.
 ==============================================================================
 """
 
@@ -504,8 +504,7 @@ def suppress_output():
         finally:
             os.dup2(old_stdout, sys.stdout.fileno())
             os.dup2(old_stderr, sys.stderr.fileno())
-            # 🛠️ LA CORRECTION EST ICI : Il faut refermer les descripteurs !
-            os.close(old_stdout)
+            os.close(old_stdout)   # close the saved descriptors
             os.close(old_stderr)
 
 # =================================================================
@@ -966,7 +965,6 @@ def process_design_worker(args):
         
         model_confidence = (0.8 * metrics["iptm"]) + (0.2 * metrics["ptm"])
         ratio = model_confidence / bio["pDockQ"] if bio["pDockQ"] > 0.01 else 0.0
-        # pi_score = round(bio["Num_intf_residues"] * DEFAULT_CONSERVATION, 2)  # ARCHIVED — see note near top of file
 
         if os.path.exists(temp_pdb): os.remove(temp_pdb)
 
