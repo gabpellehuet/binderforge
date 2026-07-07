@@ -33,6 +33,7 @@
 import os
 import sys
 import re
+import glob
 import yaml
 import subprocess
 import argparse
@@ -55,20 +56,35 @@ CONDA_SOURCE = "/usr/local/miniforge3/etc/profile.d/conda.sh"
 # ==============================================================================
 
 def ensure_config_prefix(config_dir):
-    """If the config folder name lacks an 'NN-' prefix, add max(sibling NN)+1 and rename."""
+    """Guarantee this config folder has a UNIQUE 'NN-' config_id among its siblings.
+
+    config_id must be unique per project (it's part of binder_id); labels may repeat.
+    If the folder has no 'NN-' prefix, or its number is already used by another sibling
+    config folder, assign the next free number (max sibling id + 1) and rename the folder,
+    keeping the label. Returns the (possibly new) folder path.
+    """
     base = os.path.basename(os.path.normpath(config_dir))
-    if re.match(r'^\d+-', base):
-        return config_dir
     parent = os.path.dirname(os.path.normpath(config_dir))
-    used = []
+    m = re.match(r'^(\d+)-', base)
+    my_id = int(m.group(1)) if m else None
+    label = base[m.end():] if m else base                 # folder name without the 'NN-'
+
+    sib_ids = []
     for name in os.listdir(parent):
-        m = re.match(r'^(\d+)-', name)
-        if m and os.path.isdir(os.path.join(parent, name)):
-            used.append(int(m.group(1)))
-    nxt = (max(used) + 1) if used else 0
-    new_dir = os.path.join(parent, f"{nxt:02d}-{base}")
+        if name == base or not os.path.isdir(os.path.join(parent, name)):
+            continue                                       # skip self and non-dirs
+        sm = re.match(r'^(\d+)-', name)
+        if sm:
+            sib_ids.append(int(sm.group(1)))
+
+    if my_id is not None and my_id not in sib_ids:
+        return config_dir                                  # already prefixed and unique
+
+    new_id = (max(sib_ids) + 1) if sib_ids else 0          # > every sibling → guaranteed free
+    new_dir = os.path.join(parent, f"{new_id:02d}-{label}")
     os.rename(config_dir, new_dir)
-    print(f"   🔢 Config folder had no NN- prefix → renamed '{base}' → '{os.path.basename(new_dir)}'")
+    why = "had no NN- prefix" if my_id is None else f"had a duplicate config_id ({my_id:02d})"
+    print(f"   🔢 Config folder {why} → renamed '{base}' → '{os.path.basename(new_dir)}'")
     print(f"      (your shell is still in this folder; run `cd \"{new_dir}\"` to refresh the path)")
     return new_dir
 
@@ -88,6 +104,23 @@ _LEGACY_PARAM_KEYS = {
 }
 
 
+def find_target_pdb(project_dir):
+    """Resolve the target structure in a project folder without needing a fixed name.
+
+    Prefer `target.pdb` if present, else the SOLE `*.pdb` in the folder (outputs never
+    land here, so a single .pdb is unambiguous). Returns (path, candidates); on a
+    missing/ambiguous choice, path is the conventional `target.pdb` (which won't exist)
+    so pre-flight can report it, and `candidates` lists what was found.
+    """
+    conv = os.path.join(project_dir, "target.pdb")
+    if os.path.exists(conv):
+        return conv, [conv]
+    pdbs = sorted(glob.glob(os.path.join(project_dir, "*.pdb")))
+    if len(pdbs) == 1:
+        return pdbs[0], pdbs
+    return conv, pdbs                       # 0 or >1 → report via check_inputs
+
+
 def resolve_convention(user_cfg, config_dir, project_dir):
     """Fill work_dir / identity / target / outputs from the folder convention.
     Anything already set in the user config wins (explicit override)."""
@@ -105,8 +138,10 @@ def resolve_convention(user_cfg, config_dir, project_dir):
     cfg['project_name'] = cfg.get('project_name') or base    # legacy label → output CSV base name
 
     tgt = dict(cfg.get('target') or {})
-    tgt['pdb'] = tgt.get('pdb') or os.path.join(project_dir, "target.pdb")
-    tgt['msa'] = tgt.get('msa') or os.path.join(project_dir, "target_msa.a3m")
+    if not tgt.get('pdb'):
+        tgt['pdb'] = find_target_pdb(project_dir)[0]
+    stem = os.path.splitext(os.path.basename(tgt['pdb']))[0]     # msa stays paired with the pdb
+    tgt['msa'] = tgt.get('msa') or os.path.join(project_dir, f"{stem}_msa.a3m")
     cfg['target'] = tgt
 
     outputs = dict(DEFAULT_OUTPUTS)
@@ -150,6 +185,25 @@ def run_step(step_name, command, runner, soft=False):
 def check_inputs(cfg, config_yaml):
     """Pre-flight: validate the resolved config, then verify required input files exist."""
     print("🔍 Running Pre-flight Checks...")
+
+    # Target structure — clearer message than the generic schema check (it's a FILE,
+    # not a config edit). Only when not explicitly overridden and not yet resolved.
+    pdb = cfg['target']['pdb']
+    if not os.path.exists(pdb):
+        project_dir = os.path.dirname(os.path.normpath(cfg['work_dir']))
+        pdbs = sorted(glob.glob(os.path.join(project_dir, "*.pdb")))
+        print("\n" + "!" * 60)
+        if len(pdbs) > 1:
+            print("❌ Multiple .pdb files in the project folder — can't pick the target:")
+            for p in pdbs:
+                print(f"     - {os.path.basename(p)}")
+            print(f"   → rename one to target.pdb, or set  target: {{pdb: ...}}  in {config_yaml}")
+        else:
+            print(f"❌ No target structure found in {project_dir}")
+            print("   → put your target .pdb there (any filename if it's the only one).")
+        print("!" * 60)
+        return False
+
     ok, errors, warnings = validate_config(cfg)
     for w in warnings:
         print(f"   ⚠️  {w}")

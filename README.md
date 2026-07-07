@@ -36,7 +36,7 @@ Machine settings live in `site.yaml` (conda source, env names, tool/model paths)
 
 ```bash
 cp -r ProjectName MyTarget           # the template scaffold
-# replace MyTarget/target.pdb with your target; edit the `# TODO`s in MyTarget/00-Label/config.yaml
+# put your target .pdb in MyTarget/ (any filename, auto-detected); edit the `# TODO`s in MyTarget/00-Label/config.yaml
 
 cd MyTarget/00-Label
 binderforge doctor                  # check envs / tools / model paths for this config

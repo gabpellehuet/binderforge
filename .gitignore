@@ -22,3 +22,5 @@ dist/
 
 # Template's generated MSA (placeholder target)
 /ProjectName/**/target_msa.a3m
+
+PCPE_TEST/
