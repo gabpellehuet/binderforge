@@ -1,0 +1,10 @@
+# Role: msa — colabfold_search target MSA (step 0). Needs the mmseqs DB (site.yaml tools.msa_db).
+name: msa_tools
+channels: [bioconda, conda-forge]
+dependencies:
+  - python=3.10
+  - mmseqs2
+  - colabfold
+  - pip
+  - pip:
+      - alphafold-colabfold==2.3.6

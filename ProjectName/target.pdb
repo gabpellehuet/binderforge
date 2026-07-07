@@ -1,0 +1,17 @@
+REMARK  ==============================================================
+REMARK   PLACEHOLDER TARGET  —  REPLACE THIS FILE
+REMARK   Overwrite target.pdb with your real target structure
+REMARK   (the protein you want to design a binder against).
+REMARK   Chain convention downstream: A = binder (designed), B = target.
+REMARK   target_msa.a3m is auto-generated in step 0 if absent.
+REMARK  ==============================================================
+ATOM      1  N   GLY A   1       0.000   0.000   0.000  1.00  0.00           N
+ATOM      2  CA  GLY A   1       1.458   0.000   0.000  1.00  0.00           C
+ATOM      3  C   GLY A   1       2.009   1.420   0.000  1.00  0.00           C
+ATOM      4  O   GLY A   1       1.251   2.390   0.000  1.00  0.00           O
+ATOM      5  N   GLY A   2       3.332   1.540   0.000  1.00  0.00           N
+ATOM      6  CA  GLY A   2       3.999   2.830   0.000  1.00  0.00           C
+ATOM      7  C   GLY A   2       5.510   2.670   0.000  1.00  0.00           C
+ATOM      8  O   GLY A   2       6.010   1.540   0.000  1.00  0.00           O
+TER       9      GLY A   2
+END

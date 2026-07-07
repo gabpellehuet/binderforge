@@ -1,0 +1,14 @@
+# Role: rfd — RFdiffusion3 backbone generation (step 1, backbone_generator=rfdiffusion).
+# Conda scaffold only. The rfd3 CLI comes from the RFdiffusion3 repo — see envs/README.md.
+name: rf3
+channels: [bioconda, conda-forge]
+dependencies:
+  - python=3.12
+  - cuda-nvcc
+  - pip
+  - pip:
+      # torch: install a build matching YOUR CUDA (this machine: cu128 nightly for RTX 50xx).
+      - cuequivariance-torch
+      - hydra-core==1.3.2
+variables:
+  TORCH_CUDA_ARCH_LIST: '12.0'

@@ -1,0 +1,13 @@
+# Role: dash — dashboard + Complexa/AlphaFast python driver (step 5). Optional: envs.dash
+# defaults to conda `base`; create this only if you'd rather not use base.
+name: dash
+channels: [conda-forge]
+dependencies:
+  - python=3.11
+  - pandas
+  - numpy
+  - biopython
+  - openpyxl
+  - matplotlib
+  - rich
+  - pyyaml

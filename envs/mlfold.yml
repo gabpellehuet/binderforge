@@ -1,0 +1,10 @@
+# Role: mpnn — ProteinMPNN sequence design (step 2).
+# ProteinMPNN itself is a git clone; point site.yaml tools.mpnn_script at its run script.
+# torch: install a build matching YOUR CUDA (add under a `pip:` block if not using conda torch).
+name: mlfold
+channels: [bioconda, conda-forge]
+dependencies:
+  - python
+  - biopython
+  - pyyaml
+  - pip

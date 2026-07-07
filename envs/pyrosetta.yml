@@ -1,0 +1,10 @@
+# Role: score — BinderScore physics (step 4). PyRosetta needs a (free academic) license.
+name: pyrosetta
+channels: [bioconda, conda-forge]
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+      # PyRosetta: install under your license, e.g.  pip install pyrosetta-installer  then
+      #   python -c "import pyrosetta_installer; pyrosetta_installer.install_pyrosetta()"
+      - pyrosetta-installer

@@ -1,0 +1,13 @@
+# Role: boltz — structure prediction (step 3, predictor=boltz). Weights auto-download on first run.
+name: boltz
+channels: [bioconda, conda-forge]
+dependencies:
+  - python=3.12
+  - mmseqs2
+  - aria2
+  - pip
+  - pip:
+      - boltz==2.2.0
+      - cuequivariance-torch
+      - hydra-core==1.3.2
+      # torch: install a build matching YOUR CUDA.

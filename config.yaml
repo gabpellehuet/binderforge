@@ -1,0 +1,173 @@
+# ==============================================================================
+# 🧬 PIPELINE CONFIGURATION v4.0 — TEMPLATE
+# ==============================================================================
+#
+#   DESCRIPTION:
+#   ---------------------------------------------------------------------------
+#   Central control file for the entire protein design pipeline.
+#   All scripts (Run_Pipeline.py + steps 01–05) read their settings from here.
+#   You should NOT need to edit the scripts themselves.
+#
+#   This config holds PARAMETERS ONLY. Identity, target paths and output
+#   locations are DERIVED from the folder layout (see manual.md §3):
+#       <Project>/target.pdb + target_msa.a3m   →   <Project>/<NN-Label>/config.yaml
+#
+#   KEY SECTIONS TO SET:
+#   1. BACKBONE GENERATOR — "rfdiffusion" or "complexa" (+ its STEP 1 block)
+#   2. PREDICTOR          — "alphafast" or "boltz"
+#   3. Design parameters  — binder length, hotspots, #designs, MPNN, cutoffs
+#
+#   OUTPUTS (auto-generated inside the config folder):
+#   - outputs/01_BackboneGeneration  outputs/02_ProteinMPNN
+#   - outputs/03_{AlphaFast|Boltz}    outputs/04_Scoring   outputs/05_Dashboard
+#   - outputs/run_manifest.json (provenance)  outputs/run_summary.md
+#
+#   USAGE — cd into the config folder, then run the shared orchestrator:
+#       cd <Project>/<NN-Label>
+#       python /path/to/tool/Run_Pipeline.py all     # or a step: 0..5
+#   (Target MSA is auto-generated in step 0 if missing.)
+# ==============================================================================
+
+# ==============================================================================
+# 🎛️ USER SETTINGS
+# ==============================================================================
+
+# 1. IDENTITY — all OPTIONAL. Normally DERIVED from the folder layout:
+#      binder_name = the Project folder name
+#      config_id   = the NN- prefix of THIS config folder (auto-added on run if missing)
+#      binder_id   = {binder_name}-{config_id:02}-{n}     e.g. GPIP-00-12
+#      run folder  = {config_id:02}-{Label}               e.g. 00-RFdiffusion1
+#    Uncomment ONLY to override what the folder names imply:
+# binder_name: "GPIP"
+# config_id: 0
+
+# 2. BACKBONE GENERATOR SWITCH — determines which Step 1 script runs
+backbone_generator: "rfdiffusion"   # "rfdiffusion"  or  "complexa"
+
+# 3. TARGET — OPTIONAL. Normally DERIVED from the Project folder:
+#      <Project>/target.pdb   and   <Project>/target_msa.a3m  (MSA auto-made in step 0).
+#    Uncomment only to point at differently-named files:
+# target:
+#   pdb: "/abs/path/target.pdb"
+#   msa: "/abs/path/target_msa.a3m"
+
+# ==============================================================================
+# 🛠️ STEP-BY-STEP CONFIGURATION
+# ==============================================================================
+
+# 🦴 STEP 1a: RFdiffusion  (Backbone Generation — used when backbone_generator = "rfdiffusion")
+step1_rfd:
+  binder_length: [50, 150]      # TODO [min, max] binder residues  e.g. [50, 150]
+  target_residues: ""           # TODO target chain residue range  e.g. "A1-346"
+  hotspot_residues: []          # TODO e.g. ["A271", "A244", "A241"]  ([] = sample full surface)
+  is_non_loopy: true            # true = compact binders (recommended for PPI)
+  batch_size: 2                 # designs per batch per GPU (1–8 depending on protein size)
+  num_batches: 100              # batches per GPU; total designs = batch_size × num_batches × n_GPUs
+  step_scale: 1.5               # PPI recommendation (default 1.5, use 3 for tighter PPI / less diversity)
+  gamma_0: 0.6                  # PPI recommendation (default 0.6, use 0.2 for tighter PPI / less diversity)
+
+# 🦴 STEP 1b: Proteina Complexa  (Backbone Generation — used when backbone_generator = "complexa")
+step1_complexa:
+  # docker_image, complexa_dir, af2_params_dir → site.yaml (machine layer)
+  target_input: ""              # TODO residue range for binder interface  e.g. "A1-346"
+  binder_length: [50, 100]      # [min, max] binder residues
+  hotspot_residues: []          # TODO e.g. ["A271", "A244", "A241"]  ([] = sample all surface)
+
+  nsteps: 200                   # diffusion steps — 200 standard, 300 higher quality (~50% slower)
+  nsamples: 50                  # designs per GPU; total = nsamples × len(gpu_devices)
+  batch_size: 4                 # samples per forward pass — reduce if CUDA OOM
+  algorithm: "best-of-n"        # "single-pass" (fast baseline) or "best-of-n" (keeps best by reward)
+  best_of_n_replicas: 10        # trajectories per design when algorithm = "best-of-n"
+  reward_model: "af2"           # null | "bioinformatics" (SC+SASA) | "af2" (AF2 multimer, slowest/best)
+  refinement: false             # sequence_hallucination post-diffusion refinement (requires af2)
+  n_recycle: 1                  # refinement recycle passes (0 = off)
+  seed: 5
+
+# 🧬 STEP 2: ProteinMPNN  (Sequence Design — skipped automatically when backbone_generator = "complexa")
+step2_mpnn:
+  seqs_per_target: 1000         # sequences generated internally per backbone
+  seqs_to_validate: 1           # top N sequences forwarded to structure prediction
+  sampling_temp: 0.1            # 0.1 = high confidence / low diversity, 0.3 = more diversity
+  batch_size: 24                # sequences per forward pass; auto-snapped to nearest
+                                # divisor of seqs_per_target (e.g. 1000 → 23 becomes 25)
+
+# ==============================================================================
+# PREDICTOR SWITCH — determines which Step 3 script runs
+predictor: "alphafast"   # "alphafast"  or  "boltz"
+
+# 🧬 STEP 3a: Boltz  (Structure Prediction)
+step3_boltz:
+  recycling: 5
+  samples: 1
+
+# 🧬 STEP 3b: AlphaFast  (Structure Prediction — Alternative to Boltz)
+step3_alphafast:
+  # alphafast_dir, db_dir, weights_dir → site.yaml (machine layer)
+  num_gpus: 2
+
+# 🧬 STEP 5: Dashboard  (Candidate Selection Cutoffs)
+cutoffs:
+  rmsd: 1
+  confidence_score: 0.8
+  iptm: 0.8
+  dsasa: 1500
+
+# ==============================================================================
+# 💻 SYSTEM SETTINGS
+# ==============================================================================
+# Machine-specific settings — conda source, conda env names, tool/model/DB paths,
+# and gpu_devices — live in site.yaml, NOT here, so this config stays portable.
+# Set them once per machine:
+#   cp site.yaml.example ~/.binderdesign/site.yaml      # then edit paths
+#   (or:  python /path/to/Run_Pipeline.py init-site  from a filled config folder)
+# Verify with:  python /path/to/Run_Pipeline.py doctor
+# A run may still override any machine key by setting it here explicitly.
+
+# outputs/ layout is DERIVED (01_BackboneGeneration … 05_Dashboard) inside each config
+# folder. It does not need to be set here; override with an `outputs:` block only if required.
+
+# ==============================================================================
+# 🔬 SCORING CONFIGURATION
+# All thresholds and weights can be tuned here without editing any script.
+# Python defaults are used for any key not present in this section.
+# ==============================================================================
+scoring:
+  suffix: "_summary.csv"
+  refold_top_n: 10    # top N PASS designs to refold as monomers (0 or --no-refold to skip)
+
+  # ── Hard eliminators ─────────────────────────────────────────────────────────
+  # Format: [operator, threshold]   operators: gt (>)  lt (<)  eq (==)
+  # Any single failure → ELIMINATED
+  hard_eliminators:
+    lrmsd:               [gt, 3.73]    # Overath 2025: F1-optimal (positional matching on binder)
+    sc_score:            [lt, 0.62]    # Overath 2025: F1-optimal
+    iptm:                [lt, 0.60]    # safety floor; ipsae_min drives ranking
+    dSASA:               [lt, 800.0]
+    clashes:             [gt, 5]
+    af3_has_clash:       [eq, true]
+    af3_frac_disordered: [gt, 0.30]
+  # ipSAE cutoffs applied automatically when those columns are present
+  ipsae_min_hard_cutoff: 0.30    # ipsae_min (0–1, higher=better): absolute floor
+  ipae_hard_cutoff:      20.0    # ipae (Å, lower=better): fallback when ipsae_min absent
+
+  # ── BinderScore composite weights (must sum to 1.0) ──────────────────────────
+  # Based on Overath et al. 2025 (3,766 binders, 15 targets)
+  score_weights:
+    ipsae_min: 0.60    # primary predictor
+    dG_dSASA:  0.25    # combined energy × burial  -(dG/dSASA)×100, normalised to [0,1]
+    sc_score:  0.08    # tiebreaker above hard cutoff (0.62)
+    unsat_pen: 0.05
+    model_confidence: 0.02
+
+  # ── BinderScore tier thresholds ───────────────────────────────────────────────
+  tier1_cutoff: 0.75
+  tier2_cutoff: 0.60
+
+  # ── Soft warnings: [operator, threshold] — flagged but never eliminated ───────
+  soft_warnings:
+    unsat_hbonds: [gt, 3]
+    rmsd_binder:  [gt, 1.5]
+    dG:           [gt, 0.0]
+
+dashboard:
+  html_name: "_Dashboard.html"

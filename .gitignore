@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+/site.yaml          
+**/outputs/
+**/.resolved_config.yaml
+/CLAUDE.md
+# Python packaging / editable-install artifacts
+*.egg-info/
+build/
+dist/
+*.pyo
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+.ipynb_checkpoints/
+
+# Claude Code local settings (if you use it in-repo)
+.claude/settings.local.json
+
+# Template's generated MSA (placeholder target)
+/ProjectName/**/target_msa.a3m

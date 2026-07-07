@@ -1,0 +1,50 @@
+# ==============================================================================
+# 🖥️  SITE CONFIG (machine layer)  —  copy to  ~/.binderdesign/site.yaml
+# ==============================================================================
+# Set ONCE per machine. Holds everything install-specific: the conda source, the
+# per-tool conda env names, and paths to installed tools / model weights / DBs.
+# A run's config.yaml stays portable and carries NONE of this.
+#
+# Resolution order (first that exists wins):
+#   1. $BINDERDESIGN_SITE          2. <tool root>/site.yaml          3. ~/.binderdesign/site.yaml
+#
+# Only the keys for the generator/predictor you actually use are required —
+# run `python Run_Pipeline.py doctor` from a config folder to see what's missing.
+# You can auto-seed this file from an existing filled config.yaml:
+#   python Run_Pipeline.py init-site
+# ==============================================================================
+
+# conda.sh to source before `conda activate`. "auto" = derive from $CONDA_EXE.
+conda_source: auto        # or an explicit path, e.g. /usr/local/miniforge3/etc/profile.d/conda.sh
+
+# Conda env NAMES per role (create these envs yourself; recipes ship separately).
+envs:
+  rfd:   rf3          # RFdiffusion (step 1, rfdiffusion)
+  mpnn:  mlfold       # ProteinMPNN (step 2)
+  boltz: boltz        # Boltz (step 3, boltz)
+  score: pyrosetta    # Scoring (step 4, needs PyRosetta license)
+  dash:  base         # Dashboard + Complexa/AlphaFast python driver
+  msa:   msa_tools    # colabfold_search (step 0)
+
+gpu_devices: [0, 1]   # GPUs this machine exposes (a run's config.yaml may override)
+
+tools:
+  mpnn_script:  /path/to/ProteinMPNN/protein_mpnn_run.py
+  msa_db:       /path/to/mmseqs_db          # colabfold_search database (step 0)
+  pymol:        /path/to/pymol              # optional; falls back to `pymol` on PATH
+  af_input_dir: /data/af_input              # AF3/AlphaFast MSA staging (must match the AF3 docker mount)
+
+checkpoints:
+  rfd: /path/to/RFdiffusion3/checkpoints/rfd3_latest.ckpt   # required for backbone_generator=rfdiffusion
+
+# Only needed if backbone_generator=complexa
+step1_complexa:
+  complexa_dir:   /path/to/Proteina-Complexa
+  docker_image:   proteina-complexa
+  af2_params_dir: /path/to/AF2/params
+
+# Only needed if predictor=alphafast
+step3_alphafast:
+  alphafast_dir: /path/to/AlphaFast/alphafast
+  db_dir:        /path/to/AlphaFast/databases
+  weights_dir:   /path/to/alphafold3/          # AF3 weights (access-gated; you download these)

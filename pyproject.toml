@@ -1,0 +1,22 @@
+# Editable install is the supported mode:  pip install -e .
+# The orchestrator shells each step into its own conda env (see envs/) and resolves
+# its script tree from the repo, so it stays light — only pyyaml is needed here; the
+# heavy per-step deps live in the conda env recipes, not in this package.
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proteinbinderdesign"
+version = "0.4.0"
+description = "Convention-based orchestrator for target→binder design (backbone → MPNN → prediction → scoring → dashboard)."
+readme = "manual.md"
+requires-python = ">=3.9"
+dependencies = ["pyyaml>=5"]
+
+[project.scripts]
+# After `pip install -e .`:  binderdesign doctor | setup-envs | all | 0..5
+binderdesign = "Run_Pipeline:main"
+
+[tool.setuptools]
+py-modules = ["Run_Pipeline"]
