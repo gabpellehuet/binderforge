@@ -86,7 +86,7 @@ def main():
     yaml_files = glob.glob(os.path.join(MPNN_DIR, "**", "*.yaml"), recursive=True)
     print(f"\n🔄 Preparing {len(yaml_files)} AF3 JSON inputs from Step-3 selections...")
 
-    json_count = 0
+    json_names = set()
     for yaml_file in yaml_files:
         with open(yaml_file, 'r') as f:
             boltz_data = yaml.safe_load(f)
@@ -125,8 +125,9 @@ def main():
 
         with open(os.path.join(AF_IN_DIR, f"{json_name}.json"), 'w') as f:
             json.dump(af3_dict, f, indent=2)
-        json_count += 1
+        json_names.add(json_name)
 
+    json_count = len(json_names)
     print(f"✅ {json_count} JSON inputs ready.")
 
     # 2. RUN ALPHAFAST NATIVE BATCH
@@ -153,8 +154,19 @@ def main():
     def _monitor():
         start = time.time()
         while not stop_event.wait(10):
-            done = len(glob.glob(
-                os.path.join(AF_RESULTS_DIR, "**", "*_model.cif"), recursive=True))
+            # Count unique *designs* finished, not raw CIF files.
+            # AF3 writes multiple CIFs per design (seeds, ranked copies, etc.),
+            # so naively counting files causes percentage > 100%.
+            cif_files = glob.glob(
+                os.path.join(AF_RESULTS_DIR, "**", "*_model.cif"), recursive=True)
+            done_names = set()
+            for f in cif_files:
+                basename = os.path.basename(f)
+                for name in json_names:
+                    if basename.startswith(name):
+                        done_names.add(name)
+                        break
+            done = len(done_names)
             pct  = done / json_count * 100 if json_count > 0 else 0
             bar  = '█' * int(30 * done / json_count) if json_count > 0 else ''
             elapsed = int(time.time() - start)
@@ -181,8 +193,10 @@ def main():
         stop_event.set()
         monitor.join(timeout=2)
 
-    done = len(glob.glob(
-        os.path.join(AF_RESULTS_DIR, "**", "*_model.cif"), recursive=True))
+    cif_files = glob.glob(
+        os.path.join(AF_RESULTS_DIR, "**", "*_model.cif"), recursive=True)
+    done_names = {n for f in cif_files for n in json_names if os.path.basename(f).startswith(n)}
+    done = len(done_names)
     print(f"\r   [{'█' * 30}] {done}/{json_count} — done{' ' * 20}")
 
     if proc.returncode != 0:
