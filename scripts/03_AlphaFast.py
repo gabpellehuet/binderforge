@@ -154,7 +154,7 @@ def main():
     def _monitor():
         start = time.time()
         while not stop_event.wait(10):
-            # Count unique *designs* finished, not raw CIF files.
+            # Count unique designs finished, not raw CIF files.
             # AF3 writes multiple CIFs per design (seeds, ranked copies, etc.),
             # so naively counting files causes percentage > 100%.
             cif_files = glob.glob(
