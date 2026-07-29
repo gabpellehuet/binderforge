@@ -34,6 +34,11 @@
       - polar_res:          Count of polar residues.
       - hydro_res:          Count of hydrophobic residues.
       - charged_res:        Count of charged residues.
+      - has_aromatic:       Does the binder sequence contain F/W/Y? (flagged in `warnings` if False).
+      - best_seq_with_aromatic: Only set when has_aromatic is False — the best-scoring
+                            ProteinMPNN candidate (of the seqs_per_target pool, not just
+                            the one forwarded to prediction) that does contain F/W/Y.
+                            Empty if none qualify or no MPNN pool exists (Complexa).
       - sequence:           Amino acid sequence of the Binder (Chain A).
 
 Written by Naïs Sermet, Jean-Marie Bourhis, Gabriel Pellé-Huet, Claude and Gemini.
@@ -93,9 +98,10 @@ TIER1_CUTOFF = 0.75
 TIER2_CUTOFF = 0.60
 
 SOFT_WARNINGS = {
-    "unsat_hbonds": ("gt", 3,   "High unsat_hbonds (>3)"),
-    "rmsd_binder":  ("gt", 1.5, "Moderate rmsd_binder (>1.5Å)"),
-    "dG":           ("gt", 0.0, "Positive dG — verify Rosetta setup"),
+    "unsat_hbonds":  ("gt", 3,     "High unsat_hbonds (>3)"),
+    "rmsd_binder":   ("gt", 1.5,   "Moderate rmsd_binder (>1.5Å)"),
+    "dG":            ("gt", 0.0,   "Positive dG — verify Rosetta setup"),
+    "has_aromatic":  ("eq", False, "No aromatic residues (F/W/Y) in binder sequence"),
 }
 
 # Reason labels and warning messages — display-only, not user-configurable
@@ -114,6 +120,7 @@ _SOFT_WARNING_MESSAGES = {
     "unsat_hbonds": "High unsat_hbonds",
     "rmsd_binder":  "Moderate rmsd_binder",
     "dG":           "Positive dG — verify Rosetta setup",
+    "has_aromatic": "No aromatic residues (F/W/Y) in binder sequence",
 }
 
 
@@ -183,6 +190,10 @@ AA_MAP = {
     'MET': 'M', 'ASN': 'N', 'PRO': 'P', 'GLN': 'Q', 'ARG': 'R',
     'SER': 'S', 'THR': 'T', 'VAL': 'V', 'TRP': 'W', 'TYR': 'Y'
 }
+
+# Canonical aromatic side chains (Phe/Trp/Tyr) — checked against the whole
+# binder sequence, not just the interface (see has_aromatic below).
+AROMATIC_RESIDUES = set('FWY')
 
 # =================================================================
 # SCORING FUNCTIONS  (hard eliminators + BinderScore)
@@ -264,7 +275,14 @@ def compute_binder_scores(df: pd.DataFrame) -> pd.DataFrame:
     for col, (op, threshold, msg) in SOFT_WARNINGS.items():
         if col not in p.columns:
             continue
-        flag = p[col] > threshold if op == "gt" else p[col] < threshold
+        if op == "gt":
+            flag = p[col] > threshold
+        elif op == "lt":
+            flag = p[col] < threshold
+        elif op == "eq":
+            flag = p[col] == threshold
+        else:
+            continue
         p.loc[flag, "warnings"] = p.loc[flag, "warnings"].str.cat(
             pd.Series(msg + "; ", index=p.index[flag]), na_rep=""
         )
@@ -486,6 +504,81 @@ def run_binder_refold(df_ranked: pd.DataFrame, cfg: dict, work_dir: str,
     done = int((df_ranked['refold_rmsd_binder'] < 900).sum())
     print(f"   ✅ Refold complete: {done} scored | {good} hold fold (≤ 2.0 Å)")
     return df_ranked
+
+
+# =================================================================
+# AROMATIC FALLBACK  (best alternate ProteinMPNN sequence with F/W/Y)
+# =================================================================
+# The forwarded binder sequence (row['sequence'] / has_aromatic) is only the
+# top-scoring ProteinMPNN candidate (step2_mpnn.seqs_to_validate). The other
+# seqs_per_target candidates ProteinMPNN generated for the same backbone are
+# never structurally predicted, but they're still sitting in the step-2
+# fasta — cheap to re-scan for a design whose forwarded sequence has no
+# aromatic. No fallback exists for backbone_generator=complexa (step 2 is
+# skipped entirely there — no ProteinMPNN pool to pull from).
+
+def _find_mpnn_fasta(mpnn_root, design_name):
+    """Locate <02_ProteinMPNN>/gpu{N}/seqs/<design>.fa for a design name
+    (mirrors contract.find_backbone's gpu-prefix resolution)."""
+    m = re.match(r'^(gpu\d+)_', design_name)
+    if m:
+        path = os.path.join(mpnn_root, m.group(1), "seqs", f"{design_name}.fa")
+        if os.path.exists(path):
+            return path
+    hits = glob.glob(os.path.join(mpnn_root, "**", "seqs", f"{design_name}.fa"), recursive=True)
+    return hits[0] if hits else None
+
+
+def _best_aromatic_alt_sequence(fasta_path):
+    """Among ALL ProteinMPNN candidates for this design (not just the one
+    forwarded to prediction), return the lowest-score (best) sequence that
+    contains at least one aromatic residue — same score field/ordering as
+    02_ProteinMPNN.py's get_top_n_seqs (lower ProteinMPNN score = better).
+    None if the fasta is missing or no candidate qualifies."""
+    if not fasta_path or not os.path.exists(fasta_path):
+        return None
+    with open(fasta_path) as f:
+        entries = f.read().split('>')[1:]
+    candidates = []
+    for entry in entries:
+        lines = entry.split('\n')
+        header = lines[0]
+        seq = "".join(lines[1:]).strip()
+        if "original" in header.lower():
+            continue
+        score_part = [p for p in header.split(',') if "score=" in p]
+        if not score_part:
+            continue
+        try:
+            score = float(score_part[0].split('=')[1])
+        except (IndexError, ValueError):
+            continue
+        if any(c in AROMATIC_RESIDUES for c in seq):
+            candidates.append((score, seq))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: x[0])
+    return candidates[0][1]
+
+
+def add_aromatic_fallback(df: pd.DataFrame, mpnn_root: str) -> pd.DataFrame:
+    """For every row with has_aromatic == False, add the best-scoring
+    ProteinMPNN candidate sequence (for that same backbone) that does
+    contain an aromatic residue, if one exists."""
+    if "has_aromatic" not in df.columns:
+        return df
+    df["best_seq_with_aromatic"] = ""
+    needs_fallback = df.index[~df["has_aromatic"].astype(bool)]
+    for idx in needs_fallback:
+        # MPNN fastas are keyed by the bare backbone name — "design" carries
+        # the predicted-structure "_model" suffix, same distinction _refold_base_name
+        # exists for.
+        backbone_name = _refold_base_name(df.at[idx, "design"])
+        fasta = _find_mpnn_fasta(mpnn_root, backbone_name)
+        alt_seq = _best_aromatic_alt_sequence(fasta)
+        if alt_seq:
+            df.at[idx, "best_seq_with_aromatic"] = alt_seq
+    return df
 
 
 # =================================================================
@@ -982,6 +1075,7 @@ def process_design_worker(args):
             "ratio_mp_pDockQ": round(ratio, 2),
             "hb_count": bio["hb"], "sb_count": bio["sb"], "contacts": bio["contact_pairs"], "intf_residues": bio["Num_intf_residues"],
             "polar_res": bio["Polar"], "hydro_res": bio["Hydrophobic"], "charged_res": bio["Charged"],
+            "has_aromatic": any(c in AROMATIC_RESIDUES for c in bio["sequence"]),
             "sequence": bio["sequence"]
         }
     except Exception as e: 
@@ -1082,6 +1176,12 @@ def main():
         df.drop(columns=[c for c in ['complex_iplddt', 'complex_plddt', 'complex_pde'] if c in df.columns], inplace=True)
     elif predictor == 'boltz':
         df.drop(columns=[c for c in ['af3_frac_disordered', 'af3_has_clash'] if c in df.columns], inplace=True)
+
+    # Aromatic fallback: for any design whose forwarded sequence has no F/W/Y,
+    # look up the best-scoring alternate ProteinMPNN candidate that does.
+    # No-op (empty column) for backbone_generator=complexa — no MPNN pool there.
+    MPNN_ROOT = os.path.join(WORK_DIR, _outputs.get('step2_mpnn', 'outputs/02_ProteinMPNN'))
+    df = add_aromatic_fallback(df, MPNN_ROOT)
 
     project_name = cfg.get('project_name', os.path.basename(os.path.abspath(WORK_DIR))) or "project"
 

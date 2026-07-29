@@ -34,6 +34,8 @@ COLUMN_ORDER = [
     "polar_res", "hydro_res", "charged_res",
     "ratio_mp_pDockQ",
     "complex_iplddt", "complex_plddt", "complex_pde",
+    # Sequence composition
+    "has_aromatic", "best_seq_with_aromatic",
     # Always last
     "sequence",
 ]

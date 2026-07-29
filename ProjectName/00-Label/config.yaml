@@ -73,6 +73,7 @@ scoring:
   tier1_cutoff: 0.75
   tier2_cutoff: 0.60
   soft_warnings:                    # flagged, never eliminated
-    unsat_hbonds: [gt, 3]
-    rmsd_binder:  [gt, 1.5]
-    dG:           [gt, 0.0]
+    unsat_hbonds:  [gt, 3]
+    rmsd_binder:   [gt, 1.5]
+    dG:            [gt, 0.0]
+    has_aromatic:  [eq, false]      # warn when the binder has no F/W/Y at all
