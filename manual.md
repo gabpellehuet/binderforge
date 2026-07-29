@@ -116,9 +116,15 @@ Steps: `0`=MSA, `1`=Backbone, `2`=MPNN, `3`=Prediction, `4`=Score, `5`=Dash,
 python <tool>/scripts/config_schema.py <config folder>/outputs/.resolved_config.yaml
 ```
 The orchestrator resolves the folder convention into `outputs/.resolved_config.yaml`
-and validates **that** automatically in pre-flight, refusing to start on a bad config.
-(Validating a bare params-only `config.yaml` will just warn that identity/target/
-outputs are "derived at run time".)
+(which merges in `site.yaml`'s machine keys) and validates **that** automatically in
+pre-flight, refusing to start on a bad config. **Always point `config_schema.py` at
+the resolved config, not the bare `config.yaml`** — a bare params-only `config.yaml`
+only *warns* about identity/target/outputs being unset ("derived at run time"), but
+it will hit **fatal errors** on `envs`, `gpu_devices`, `tools.mpnn_script`,
+`checkpoints.rfd` (if `backbone_generator: rfdiffusion`), and `step3_alphafast` (if
+`predictor: alphafast`) — those keys live in `site.yaml`, not the run config, so
+validating the bare file before that merge will fail on them even when the real
+setup is fine.
 
 ---
 
