@@ -1,4 +1,4 @@
-# BinderForge
+ # BinderForge
 
 Given a target protein, design candidate **binders** and rank them — a 5-step pipeline
 orchestrated by one command:
