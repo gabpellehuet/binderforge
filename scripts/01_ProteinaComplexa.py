@@ -251,7 +251,7 @@ def main():
     algorithm       = cx['algorithm']
     seed            = cx.get('seed', 5)
     reward_model    = cx.get('reward_model', None)   # None / "bioinformatics" / "af2"
-    af2_params_dir  = cx.get('af2_params_dir', '/data/AF2/params')
+    af2_params_dir  = cx.get('af2_params_dir')   # from site.yaml (step1_complexa.af2_params_dir)
     bon_replicas    = cx.get('best_of_n_replicas', 2)
     n_recycle       = cx.get('n_recycle', 0)
     use_refinement  = cx.get('refinement', False)
@@ -264,8 +264,14 @@ def main():
         print("⚠️  TEST MODE: nsamples=2, nsteps=20, 1 GPU")
 
     njobs     = len(gpus)
-    run_name  = f"{proj}_complexa"
-    task_name = proj                            # task label = project name; no Complexa config needed
+    # task_name is used as a Hydra override KEY (target_dict_cfg.<task_name>.…), which must be a
+    # valid identifier: alphanumeric/underscore, not starting with a digit. The project name is
+    # derived from the config-folder name (e.g. "00-RF_TEST"), which can violate that and make
+    # Hydra reject every override — so sanitize it here (output naming still uses `proj`).
+    task_name = re.sub(r'\W', '_', str(proj))
+    if not task_name or task_name[0].isdigit():
+        task_name = "t_" + task_name
+    run_name  = f"{task_name}_complexa"
 
     out_dir  = os.path.join(work_dir, out_base)
     logs_dir = os.path.join(out_dir, "logs")

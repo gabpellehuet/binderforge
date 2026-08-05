@@ -52,31 +52,37 @@ pdb       = cfg["target"]["pdb"]
 rfd       = cfg.get("step1_rfd", {})
 
 blen      = rfd.get("binder_length", [50, 150])
-tgt_res   = rfd.get("target_residues", "A1-346")
+tgt_res   = rfd.get("target_residues", "")
 hotspot   = rfd.get("hotspot_residues", [])
 non_loopy = rfd.get("is_non_loopy", True)
+ori_token = rfd.get("ori_token", None)          # explicit [x,y,z] origin override; None = let strategy infer
 
 # Contig: e.g. "50-150,/0,A1-346"
 contig = f"{blen[0]}-{blen[1]},/0,{tgt_res}"
 
-# ["A271", "A244"] → {"A": [271, 244]}
-hs_dict = {}
-for hs in hotspot:
-    chain  = hs[0]
-    resnum = int("".join(c for c in hs[1:] if c.isdigit()))
-    hs_dict.setdefault(chain, []).append(resnum)
+# RFd3 select_hotspots = {residue: atoms}, e.g. {"A271": "ALL"} (docs/input.md).
+# User gives residues only (["A271","A244"]) → target ALL atoms of each.
+hs_dict = {res: "ALL" for res in hotspot}
 
-task = {
-    proj: {
-        "dialect": 2,
-        "infer_ori_strategy": "com",
-        "ori_token": [-19, -5, -10],
-        "input": pdb,
-        "contig": contig,
-        "select_hotspots": hs_dict,
-        "is_non_loopy": non_loopy,
-    }
+# RFd3 infer_ori_strategy accepts "com" or "hotspots" ("hotspots" works best WITH hotspots).
+# Default is auto: hotspots when hotspots are given, else com. Set ori_strategy in config to force one.
+ori_strategy = rfd.get("ori_strategy") or ("hotspots" if hs_dict else "com")
+
+# Only include select_hotspots (HS mode) and ori_token (explicit origin) when set —
+# otherwise "com" infers the origin from THIS target's center of mass. A hardcoded
+# ori_token would anchor the binder to a fixed point unrelated to the target.
+entry = {
+    "dialect": 2,
+    "infer_ori_strategy": ori_strategy,
+    "input": pdb,
+    "contig": contig,
+    "is_non_loopy": non_loopy,
 }
+if hs_dict:
+    entry["select_hotspots"] = hs_dict
+if ori_token is not None:
+    entry["ori_token"] = ori_token
+task = {proj: entry}
 
 with open(os.environ["_TMP_JSON"], "w") as f:
     json.dump(task, f, indent=2)
@@ -85,6 +91,7 @@ print(f"   Target PDB:      {pdb}")
 print(f"   Binder length:   {blen[0]}–{blen[1]} residues")
 print(f"   Target residues: {tgt_res}")
 print(f"   Hotspots:        {hotspot if hotspot else 'none (full surface)'}")
+print(f"   Origin:          {ori_strategy}" + (f"  ori_token={ori_token}" if ori_token is not None else "  (inferred from target)"))
 print(f"   Contig:          {contig}")
 print(f"   is_non_loopy:    {non_loopy}")
 PYEOF

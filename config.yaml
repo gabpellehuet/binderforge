@@ -13,7 +13,12 @@ predictor:          "alphafast"     # TODO  alphafast | boltz
 step1_rfd:                          # rfdiffusion
   binder_length:    [50, 150]       # TODO  [min, max] residues
   target_residues:  ""              # TODO  target chain range, e.g. "A1-346"
+  
+  ori_strategy:     null            # "com" | "hotspots"; null = auto (hotspots if hotspot residues are specified, else com). com = center of mass of target if not specified by ori_token
+  # WARNING: leaving ori_strategy and ori_token as null for bigger targets might generate binders wrapping around the target instead of properly folding 
+  ori_token:        null            # advanced: explicit origin [x, y, z] e.g. [-19, -5, -10]; null = infer per ori_strategy
   hotspot_residues: []              # TODO  e.g. ["A271","A244"]   ([] = whole surface)
+
   is_non_loopy:     true            # compact binders (recommended for PPI)
   batch_size:       2               # designs per batch per GPU
   num_batches:      100             # total = batch_size × num_batches × nGPUs
@@ -54,6 +59,8 @@ cutoffs:                            # dashboard selection
   dsasa: 1500
 scoring:
   refold_top_n: 10                  # top PASS designs refolded as monomers (0 = off)
+  pass_all:       false             # TEST ONLY: mark every design PASS (skip eliminators) to view PyMOL sessions
+  pass_all_limit: 10                # when pass_all, cap PyMOL sessions to top-N by BinderScore (safety)
   hard_eliminators:                 # [op, threshold]  op: gt|lt|eq — any hit eliminates
     lrmsd:               [gt, 3.73]
     sc_score:            [lt, 0.62]

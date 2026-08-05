@@ -92,6 +92,8 @@ SCORE_WEIGHTS = {
 TIER1_CUTOFF = 0.75
 TIER2_CUTOFF = 0.60
 
+PASS_ALL = False   # test mode: mark every design PASS (skip hard eliminators)
+
 SOFT_WARNINGS = {
     "unsat_hbonds": ("gt", 3,   "High unsat_hbonds (>3)"),
     "rmsd_binder":  ("gt", 1.5, "Moderate rmsd_binder (>1.5Å)"),
@@ -123,8 +125,9 @@ def _apply_scoring_config(cfg: dict) -> None:
     Python defaults above are used for any key not present in config.
     Call once after loading config, before running the scoring pipeline.
     """
-    global IPSAE_MIN_HARD_CUTOFF, IPAE_HARD_CUTOFF, TIER1_CUTOFF, TIER2_CUTOFF
+    global IPSAE_MIN_HARD_CUTOFF, IPAE_HARD_CUTOFF, TIER1_CUTOFF, TIER2_CUTOFF, PASS_ALL
     sc = cfg.get('scoring', {})
+    PASS_ALL = bool(sc.get('pass_all', False))
 
     # Hard eliminators: merge — config entries override defaults, extras are added
     for col, pair in sc.get('hard_eliminators', {}).items():
@@ -191,6 +194,10 @@ AA_MAP = {
 def apply_hard_eliminators(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df["status"] = "PASS"
+    if PASS_ALL:
+        print("   ⚠️  scoring.pass_all=true — all designs marked PASS (hard eliminators skipped).")
+        df["elimination_reason"] = ""
+        return df
     per_row_reasons = {i: [] for i in df.index}
 
     eliminators = dict(HARD_ELIMINATORS)
