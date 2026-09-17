@@ -121,6 +121,70 @@ def find_target_pdb(project_dir):
     return conv, pdbs                       # 0 or >1 → report via check_inputs
 
 
+def find_target_msa(project_dir):
+    """Resolve the target MSA like the PDB: prefer `target_msa.a3m`, else the SOLE
+    `*.a3m` in the project folder (any name). On none/ambiguous, return `target_msa.a3m`
+    — where step 0 generates it."""
+    conv = os.path.join(project_dir, "target_msa.a3m")
+    if os.path.exists(conv):
+        return conv
+    a3ms = sorted(glob.glob(os.path.join(project_dir, "*.a3m")))
+    return a3ms[0] if len(a3ms) == 1 else conv
+
+
+_RES_RANGE_RE = re.compile(r'([A-Za-z])(\d+)\s*-\s*(\d+)')
+
+
+def pdb_chain_ranges(pdb_path):
+    """{chain: (min_resnum, max_resnum)} from a PDB's ATOM records."""
+    chains = {}
+    with open(pdb_path) as f:
+        for line in f:
+            if line.startswith("ATOM"):
+                ch = line[21]
+                try:
+                    rn = int(line[22:26])
+                except ValueError:
+                    continue
+                lo, hi = chains.get(ch, (rn, rn))
+                chains[ch] = (min(lo, rn), max(hi, rn))
+    return chains
+
+
+def check_target_residues(target_residues, pdb_path):
+    """Validate a `<chain><start>-<end>` target_residues spec against the target PDB.
+
+    Returns (errors, warnings): ERROR if a range names a missing chain or extends beyond
+    the PDB's residues (RFdiffusion silently yields 0 backbones); WARNING if it's a strict
+    subset (designing against part of the target — sometimes intended).
+    """
+    errors, warnings = [], []
+    tr = str(target_residues or "").strip()
+    if not tr or not os.path.exists(pdb_path):
+        return errors, warnings
+    segs = _RES_RANGE_RE.findall(tr)
+    if not segs:
+        warnings.append(f"target_residues '{tr}' isn't in '<chain><start>-<end>' form — not validated against the PDB.")
+        return errors, warnings
+    ranges = pdb_chain_ranges(pdb_path)
+    for ch, s, e in segs:
+        start, end = int(s), int(e)
+        if ch not in ranges:
+            errors.append(f"target_residues chain '{ch}' is not in the target PDB "
+                          f"(chains present: {', '.join(sorted(ranges)) or 'none'}).")
+        elif start > end:
+            errors.append(f"target_residues {ch}{start}-{end} is reversed (start > end).")
+        elif start < ranges[ch][0] or end > ranges[ch][1]:
+            lo, hi = ranges[ch]
+            errors.append(f"target_residues {ch}{start}-{end} extends beyond the target's "
+                          f"residues ({ch}{lo}-{hi}) — RFdiffusion would silently make 0 backbones.")
+        elif (start, end) != ranges[ch]:
+            lo, hi = ranges[ch]
+            warnings.append(f"target_residues {ch}{start}-{end} is a SUBSET of the target "
+                            f"({ch}{lo}-{hi}) — designing against part of it (intended?).")
+    return errors, warnings
+
+
 def resolve_convention(user_cfg, config_dir, project_dir):
     """Fill work_dir / identity / target / outputs from the folder convention.
     Anything already set in the user config wins (explicit override)."""
@@ -140,8 +204,7 @@ def resolve_convention(user_cfg, config_dir, project_dir):
     tgt = dict(cfg.get('target') or {})
     if not tgt.get('pdb'):
         tgt['pdb'] = find_target_pdb(project_dir)[0]
-    stem = os.path.splitext(os.path.basename(tgt['pdb']))[0]     # msa stays paired with the pdb
-    tgt['msa'] = tgt.get('msa') or os.path.join(project_dir, f"{stem}_msa.a3m")
+    tgt['msa'] = tgt.get('msa') or find_target_msa(project_dir)
     cfg['target'] = tgt
 
     outputs = dict(DEFAULT_OUTPUTS)
@@ -203,6 +266,23 @@ def check_inputs(cfg, config_yaml):
             print("   → put your target .pdb there (any filename if it's the only one).")
         print("!" * 60)
         return False
+
+    # target_residues sanity (RFdiffusion): must fall within the target PDB's residues,
+    # else RFdiffusion silently makes 0 backbones and the failure only shows up at step 3.
+    if cfg.get('backbone_generator', 'rfdiffusion').lower() == 'rfdiffusion':
+        terrs, twarns = check_target_residues(
+            (cfg.get('step1_rfd') or {}).get('target_residues'), pdb)
+        for w in twarns:
+            print(f"   ⚠️  {w}")
+        if terrs:
+            print("\n" + "!" * 60)
+            print("❌ target_residues problem:")
+            for e in terrs:
+                print(f"   - {e}")
+            print(f"   → fix step1_rfd.target_residues in {config_yaml}  "
+                  f"(target = {os.path.basename(pdb)}).")
+            print("!" * 60)
+            return False
 
     ok, errors, warnings = validate_config(cfg)
     for w in warnings:

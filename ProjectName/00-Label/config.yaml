@@ -14,6 +14,8 @@ step1_rfd:                          # rfdiffusion
   binder_length:    [50, 150]       # TODO  [min, max] residues
   target_residues:  ""              # TODO  target chain range, e.g. "A1-346"
   hotspot_residues: []              # TODO  e.g. ["A271","A244"]   ([] = whole surface)
+  ori_strategy:     null            # "com" | "hotspots"; null = auto (hotspots if HS set, else com)
+  ori_token:        null            # advanced: explicit origin [x, y, z] e.g. [-19, -5, -10]; null = infer
   is_non_loopy:     true            # compact binders (recommended for PPI)
   batch_size:       2               # designs per batch per GPU
   num_batches:      100             # total = batch_size × num_batches × nGPUs
@@ -54,6 +56,8 @@ cutoffs:                            # dashboard selection
   dsasa: 1500
 scoring:
   refold_top_n: 10                  # top PASS designs refolded as monomers (0 = off)
+  pass_all:       false             # TEST ONLY: mark every design PASS (skip eliminators) to view PyMOL sessions
+  pass_all_limit: 10                # when pass_all, cap PyMOL sessions to top-N by BinderScore (safety)
   hard_eliminators:                 # [op, threshold]  op: gt|lt|eq — any hit eliminates
     lrmsd:               [gt, 3.73]
     sc_score:            [lt, 0.62]

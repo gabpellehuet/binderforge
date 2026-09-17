@@ -63,35 +63,38 @@ pdb       = cfg["target"]["pdb"]
 rfd       = cfg.get("step1_rfd", {})
 
 blen      = rfd.get("binder_length", [50, 150])
-tgt_res   = rfd.get("target_residues", "A1-346")
+tgt_res   = rfd.get("target_residues", "")
 hotspot   = rfd.get("hotspot_residues", [])
 non_loopy = rfd.get("is_non_loopy", True)
-
-ori_strat = rfd.get("ori_strategy", "hotspots") or "hotspots"
-ori_tok   = rfd.get("ori_token", None)
+ori_tok   = rfd.get("ori_token", None)          # explicit [x,y,z] origin override; None = let strategy infer
 
 contig = f"{blen[0]}-{blen[1]},/0,{tgt_res}"
 
-# FLEXIBLE PARSING: "A17" -> {"A17": "ALL"}, "A44 CE2" -> {"A44": "CE2"}
+# FLEXIBLE PARSING of select_hotspots {residue: atoms}: "A17" -> {"A17": "ALL"},
+# "A44 CE2" -> {"A44": "CE2"}, "A25 CA,CB" -> {"A25": "CA,CB"}.
 hs_dict = {}
 for hs in hotspot:
     parts = hs.strip().split(maxsplit=1)
-    res_id = parts[0]
-    # Use specified atoms (converted to uppercase just in case), or default to "ALL"
-    atoms = parts[1].upper() if len(parts) > 1 else "ALL"
-    hs_dict[res_id] = atoms
+    hs_dict[parts[0]] = parts[1].upper() if len(parts) > 1 else "ALL"
 
-task = {
-    proj: {
-        "dialect": 2,
-        "infer_ori_strategy": ori_strat,
-        "ori_token": ori_tok,
-        "input": pdb,
-        "contig": contig,
-        "select_hotspots": hs_dict,
-        "is_non_loopy": non_loopy,
-    }
+# infer_ori_strategy accepts "com" or "hotspots"; default is auto — hotspots when hotspots
+# are given, else com (com infers the origin from THIS target's center of mass).
+ori_strat = rfd.get("ori_strategy") or ("hotspots" if hs_dict else "com")
+
+# Only include select_hotspots and ori_token when set — a hardcoded/empty value would
+# anchor the binder to a fixed point unrelated to the target.
+entry = {
+    "dialect": 2,
+    "infer_ori_strategy": ori_strat,
+    "input": pdb,
+    "contig": contig,
+    "is_non_loopy": non_loopy,
 }
+if hs_dict:
+    entry["select_hotspots"] = hs_dict
+if ori_tok is not None:
+    entry["ori_token"] = ori_tok
+task = {proj: entry}
 
 with open(os.environ["_TMP_JSON"], "w") as f:
     json.dump(task, f, indent=2)
@@ -99,8 +102,9 @@ with open(os.environ["_TMP_JSON"], "w") as f:
 print(f"   Target PDB:      {pdb}")
 print(f"   Binder length:   {blen[0]}–{blen[1]} residues")
 print(f"   Target residues: {tgt_res}")
-# Print the formatted dictionary so you can verify it parsed correctly in the logs
+# Print the parsed hotspot dict so you can verify it in the logs
 print(f"   Hotspots:        {hs_dict if hs_dict else 'none (full surface)'}")
+print(f"   Origin:          {ori_strat}" + (f"  ori_token={ori_tok}" if ori_tok is not None else "  (inferred from target)"))
 print(f"   Contig:          {contig}")
 print(f"   is_non_loopy:    {non_loopy}")
 PYEOF

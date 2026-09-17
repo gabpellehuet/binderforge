@@ -251,7 +251,7 @@ def main():
     algorithm       = cx['algorithm']
     seed            = cx.get('seed', 5)
     reward_model    = cx.get('reward_model', None)   # None / "bioinformatics" / "af2"
-    af2_params_dir  = cx.get('af2_params_dir', '/data/AF2/params')
+    af2_params_dir  = cx.get('af2_params_dir')   # from site.yaml (step1_complexa.af2_params_dir)
     bon_replicas    = cx.get('best_of_n_replicas', 2)
     n_recycle       = cx.get('n_recycle', 0)
     use_refinement  = cx.get('refinement', False)

@@ -24,3 +24,5 @@ dist/
 /ProjectName/**/target_msa.a3m
 
 PCPE_TEST/
+# manual backup files
+*.old

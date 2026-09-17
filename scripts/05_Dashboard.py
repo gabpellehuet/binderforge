@@ -330,12 +330,26 @@ def main():
     # df_clean for plots (exclude extreme RMSD outliers)
     df_clean = df_ranked[df_ranked['rmsd_complex'] < 50].copy()
 
-    # --- COMPLEX PyMOL SESSIONS (PASS only) ---
-    print("   🎨 Generating complex PyMOL sessions for PASS candidates...")
+    # PyMOL sessions: normally one per PASS design. In scoring.pass_all test mode (everything
+    # PASSes) cap to the top-N by BinderScore so a stray long run can't emit thousands.
+    pass_all = bool(cfg.get('scoring', {}).get('pass_all', False))
+    sessions_df = df_pass_sorted
+    if pass_all:
+        limit = int(cfg.get('scoring', {}).get('pass_all_limit', 10))
+        if 'BinderScore' in sessions_df.columns:
+            sessions_df = sessions_df.sort_values('BinderScore', ascending=False)
+        sessions_df = sessions_df.head(limit)
+
+    # --- COMPLEX PyMOL SESSIONS ---
+    if pass_all:
+        print(f"   🎨 pass_all: PyMOL sessions for top {len(sessions_df)} of {len(df_pass_sorted)} "
+              f"designs (cap {limit})...")
+    else:
+        print("   🎨 Generating complex PyMOL sessions for PASS candidates...")
     pymol_link_map   = {}
     terminal_cmd_map = {}
 
-    for _, row in df_pass_sorted.iterrows():
+    for _, row in sessions_df.iterrows():
         design   = row['design']
         tier     = row.get('candidate_tier', '')
         pml_path = create_pymol_session(design, WORK_DIR, cfg, PYMOL_DIR, tier=tier)

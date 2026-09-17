@@ -10,8 +10,8 @@ import re
 # ⚙️ USER CONFIGURATION
 # ==============================================================================
 # PyMOL executable — primary source is site.yaml `tools.pymol` (read from config);
-# this literal is only a last-resort fallback before trying `pymol` on PATH.
-PYMOL_PATH = "/home/jeanm/Programs/Pymol/3.1.5.1/bin/pymol"
+# this is only the fallback when that's unset, resolving `pymol` from PATH.
+PYMOL_PATH = "pymol"
 
 # ==============================================================================
 # 🧬 HOTSPOT PIPELINE - 3D VISUALIZATION
