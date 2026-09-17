@@ -265,7 +265,7 @@ def main():
 
     njobs     = len(gpus)
     run_name  = f"{proj}_complexa"
-    task_name = "custom_task"                           # task label = project name; no Complexa config needed
+    task_name = proj                            # task label = project name; no Complexa config needed
 
     out_dir  = os.path.join(work_dir, out_base)
     logs_dir = os.path.join(out_dir, "logs")
@@ -346,10 +346,9 @@ def main():
         overrides.append(f"++generation.search.best_of_n.replicas={bon_replicas}")
     if n_recycle > 0:
         overrides.append(f"++generation.n_recycle={n_recycle}")
-# hotspot_residues is always referenced in binder_generate.yaml so must always be set
+    # hotspot_residues is always referenced in binder_generate.yaml so must always be set
     if hotspot_res:
-        # REMOVED double quotes: Hydra expects [A17,A11,A44] when bypassing the shell
-        hs_str = "[" + ",".join(str(r) for r in hotspot_res) + "]"
+        hs_str = "[" + ",".join(f'"{r}"' for r in hotspot_res) + "]"
     else:
         hs_str = "[]"
     overrides.append(f"++generation.target_dict_cfg.{task_name}.hotspot_residues={hs_str}")

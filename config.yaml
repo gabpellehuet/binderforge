@@ -13,6 +13,8 @@ predictor:          "alphafast"     # TODO  alphafast | boltz
 step1_rfd:                          # rfdiffusion
   binder_length:    [50, 150]       # TODO  [min, max] residues
   target_residues:  ""              # TODO  target chain range, e.g. "A1-346"
+  # Format: "ChainResID [Atoms]". If atoms are omitted, defaults to "ALL".
+  # Examples: "A17", "A11 ALL", "A44 CE2", "A25 CA,CB"
   hotspot_residues: []              # TODO  e.g. ["A271","A244"]   ([] = whole surface)
   is_non_loopy:     true            # compact binders (recommended for PPI)
   batch_size:       2               # designs per batch per GPU

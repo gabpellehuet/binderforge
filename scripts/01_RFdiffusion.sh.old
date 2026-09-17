@@ -4,17 +4,6 @@
 # ==============================================================================
 # All parameters read from config.yaml — no separate JSON file required.
 # A temporary input JSON is generated at runtime and removed on exit.
-# 14-09-2026
-# UPDATES & CORRECTIONS:
-# - Fixed RFdiffusion 3 (Pydantic) validation errors for `select_hotspots`.
-#   The API requires a strict dictionary mapping residues to atom selections 
-#   (e.g., {"A17": "ALL"}), not a raw list or nested dictionary.
-# - Implemented a smart parser to allow flexible, PyMOL-style atom selections 
-#   directly in config.yaml. Accepted formats in `hotspot_residues` list:
-#     * "A17"        -> Defaults to all atoms: {"A17": "ALL"}
-#     * "A11 all"    -> Space separator:       {"A11": "ALL"}
-#     * "A44 CE2"    -> Specific atom:         {"A44": "CE2"}
-#     * "A50:CA,CB"  -> Colon separator:       {"A50": "CA,CB"}
 # ==============================================================================
 
 shopt -s expand_aliases
@@ -67,25 +56,21 @@ tgt_res   = rfd.get("target_residues", "A1-346")
 hotspot   = rfd.get("hotspot_residues", [])
 non_loopy = rfd.get("is_non_loopy", True)
 
-ori_strat = rfd.get("ori_strategy", "hotspots") or "hotspots"
-ori_tok   = rfd.get("ori_token", None)
-
+# Contig: e.g. "50-150,/0,A1-346"
 contig = f"{blen[0]}-{blen[1]},/0,{tgt_res}"
 
-# FLEXIBLE PARSING: "A17" -> {"A17": "ALL"}, "A44 CE2" -> {"A44": "CE2"}
+# ["A271", "A244"] → {"A": [271, 244]}
 hs_dict = {}
 for hs in hotspot:
-    parts = hs.strip().split(maxsplit=1)
-    res_id = parts[0]
-    # Use specified atoms (converted to uppercase just in case), or default to "ALL"
-    atoms = parts[1].upper() if len(parts) > 1 else "ALL"
-    hs_dict[res_id] = atoms
+    chain  = hs[0]
+    resnum = int("".join(c for c in hs[1:] if c.isdigit()))
+    hs_dict.setdefault(chain, []).append(resnum)
 
 task = {
     proj: {
         "dialect": 2,
-        "infer_ori_strategy": ori_strat,
-        "ori_token": ori_tok,
+        "infer_ori_strategy": "com",
+        "ori_token": [-19, -5, -10],
         "input": pdb,
         "contig": contig,
         "select_hotspots": hs_dict,
@@ -99,8 +84,7 @@ with open(os.environ["_TMP_JSON"], "w") as f:
 print(f"   Target PDB:      {pdb}")
 print(f"   Binder length:   {blen[0]}–{blen[1]} residues")
 print(f"   Target residues: {tgt_res}")
-# Print the formatted dictionary so you can verify it parsed correctly in the logs
-print(f"   Hotspots:        {hs_dict if hs_dict else 'none (full surface)'}")
+print(f"   Hotspots:        {hotspot if hotspot else 'none (full surface)'}")
 print(f"   Contig:          {contig}")
 print(f"   is_non_loopy:    {non_loopy}")
 PYEOF
